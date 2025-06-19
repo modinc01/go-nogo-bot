@@ -14,19 +14,24 @@ export default async function handler(req, res) {
   try {
     const bodyBuffer = await getRawBody(req);
     const body = JSON.parse(bodyBuffer.toString());
-    console.log("Received Body:", body);
+    console.log("✅ Received Body:", body);
 
     const event = body.events?.[0];
     if (!event || event.type !== "message") {
-      console.log("Not a message event");
+      console.log("⛔ Not a message event or no message text");
       return res.status(200).send("Ignored");
     }
 
     const replyToken = event.replyToken;
     const [model, priceStr] = event.message.text.trim().split(" ");
     const price = parseInt(priceStr);
+    if (!model || isNaN(price)) {
+      console.log("⛔ Invalid message format");
+      return res.status(200).send("Invalid message");
+    }
+
     const cost = price * 1.15;
-    const marketPrice = 63000;
+    const marketPrice = 63000; // 仮固定相場
     const profit = marketPrice * 0.9 - cost;
     const profitRate = profit / cost;
     const goNoGo = (profit >= 10000 || profitRate >= 0.35) ? "⭕ Go" : "❌ NoGo";
@@ -46,12 +51,12 @@ export default async function handler(req, res) {
     });
 
     const text = await lineRes.text();
-    console.log("LINE API Status:", lineRes.status);
-    console.log("LINE API Response:", text);
+    console.log("📤 LINE API Status:", lineRes.status);
+    console.log("📤 LINE API Response:", text);
 
     res.status(200).send("OK");
   } catch (err) {
-    console.error("Webhook Error:", err);
+    console.error("💥 Webhook Error:", err);
     res.status(500).send("Internal Server Error");
   }
 }
@@ -61,4 +66,3 @@ export const config = {
     bodyParser: false,
   },
 };
-
