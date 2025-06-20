@@ -31,12 +31,17 @@ export default async function handler(req, res) {
     }
 
     const cost = price * 1.15;
-    const marketPrice = 63000; // 仮固定相場
+    const marketPrice = 63000; // 仮相場
     const profit = marketPrice * 0.9 - cost;
     const profitRate = profit / cost;
     const goNoGo = (profit >= 10000 || profitRate >= 0.35) ? "⭕ Go" : "❌ NoGo";
 
-    const message = `型番: ${model}\n仕入: ${Math.round(cost)}円\n相場: ${marketPrice}円\n利益率: ${(profitRate * 100).toFixed(2)}%\n${goNoGo}`;
+    const message = 
+      `📦 型番: ${model}\n` +
+      `💴 仕入（手数料込）: ${Math.round(cost)}円\n` +
+      `🛒 相場: ${marketPrice}円\n` +
+      `📈 利益率: ${(profitRate * 100).toFixed(2)}%\n\n` +
+      `${goNoGo}`;
 
     const lineRes = await fetch("https://api.line.me/v2/bot/message/reply", {
       method: "POST",
