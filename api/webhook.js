@@ -1,5 +1,4 @@
-import { Readable } from 'stream';
-import fetch from 'node-fetch';
+const { Readable } = require('stream');
 
 async function getRawBody(readable) {
   const chunks = [];
@@ -9,7 +8,7 @@ async function getRawBody(readable) {
   return Buffer.concat(chunks);
 }
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
   try {
@@ -19,7 +18,6 @@ export default async function handler(req, res) {
 
     const event = body.events?.[0];
     if (!event || event.type !== "message") {
-      console.log("⛔ Not a message event or no message text");
       return res.status(200).send("Ignored");
     }
 
@@ -30,13 +28,13 @@ export default async function handler(req, res) {
       return res.status(200).send("Invalid message format");
     }
 
-    // 🔍 オークファン相場を取得
+    // オークファンのスクレイピングAPIを呼び出す
     const scrapeUrl = `https://go-nogo-bot.vercel.app/api/scrape?model=${encodeURIComponent(model)}`;
     const scrapeRes = await fetch(scrapeUrl);
     const data = await scrapeRes.json();
 
     if (!data.avg) {
-      return sendLineReply(replyToken, "❌ 相場取得に失敗しました");
+      return await sendLineReply(replyToken, "❌ 相場取得に失敗しました");
     }
 
     const avgPrice = data.avg;
@@ -45,7 +43,7 @@ export default async function handler(req, res) {
     const profitRate = Math.round((profit / totalCost) * 100);
     const result = (profit >= 10000 || profitRate >= 35) ? "✅ Go" : "❌ NoGo";
 
-    const message = 
+    const message =
       `📦 型番: ${model}\n` +
       `💴 仕入（手数料込）: ${totalCost}円\n` +
       `📊 相場: ${avgPrice}円\n` +
@@ -54,30 +52,33 @@ export default async function handler(req, res) {
       `${result}`;
 
     await sendLineReply(replyToken, message);
-
     res.status(200).send("OK");
+
   } catch (err) {
     console.error("💥 Webhook Error:", err);
     res.status(500).send("Internal Server Error");
   }
-}
+};
 
 async function sendLineReply(replyToken, text) {
+  const body = JSON.stringify({
+    replyToken,
+    messages: [{ type: "text", text }]
+  });
+
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.CHANNEL_ACCESS_TOKEN}`
     },
-    body: JSON.stringify({
-      replyToken,
-      messages: [{ type: "text", text }]
-    })
+    body
   });
 }
 
-export const config = {
+module.exports.config = {
   api: {
     bodyParser: false,
   },
 };
+
