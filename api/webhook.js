@@ -71,3 +71,29 @@ export const config = {
     bodyParser: false,
   },
 };
+const input = event.message.text;
+const [model, rawCost] = input.split(" ");
+const cost = parseInt(rawCost);
+
+const response = await fetch(`https://go-nogo-bot.vercel.app/api/scrape?model=${encodeURIComponent(model)}`);
+const data = await response.json();
+
+if (data.avg) {
+  const avgPrice = data.avg;
+  const totalCost = Math.round(cost * 1.15);
+  const profit = avgPrice - totalCost;
+  const profitRate = Math.round((profit / totalCost) * 100);
+
+  const result = profit >= 10000 || profitRate >= 35 ? "✅ Go" : "❌ NoGo";
+  const replyText = `📦 ${model}\n💴 仕入: ${totalCost}円\n📊 相場: ${avgPrice}円\n📈 利益率: ${profitRate}%\n💰 利益: ${profit}円\n${result}`;
+
+  await client.replyMessage(event.replyToken, {
+    type: "text",
+    text: replyText,
+  });
+} else {
+  await client.replyMessage(event.replyToken, {
+    type: "text",
+    text: "❌ 相場取得に失敗しました",
+  });
+}
